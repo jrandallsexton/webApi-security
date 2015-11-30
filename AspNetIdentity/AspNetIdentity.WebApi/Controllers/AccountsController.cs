@@ -19,10 +19,10 @@ namespace AspNetIdentity.WebApi
             return Ok(this.AppUserManager.Users.ToList().Select(u => this.TheModelFactory.Create(u)));
         }
 
-        [Route("user/{id:guid}", Name = "GetUserById")]
-        public async Task<IHttpActionResult> GetUser(string Id)
+        [Route("users/{id:guid}", Name = "GetUserById")]
+        public async Task<IHttpActionResult> Get(string id)
         {
-            var user = await this.AppUserManager.FindByIdAsync(Id);
+            var user = await this.AppUserManager.FindByIdAsync(id);
 
             if (user != null)
             {
@@ -30,7 +30,6 @@ namespace AspNetIdentity.WebApi
             }
 
             return NotFound();
-
         }
 
         [Route("user/{username}")]
@@ -44,7 +43,6 @@ namespace AspNetIdentity.WebApi
             }
 
             return NotFound();
-
         }
 
         [Route("create")]
@@ -72,15 +70,13 @@ namespace AspNetIdentity.WebApi
                 return GetErrorResult(addUserResult);
             }
 
-            //Rest of code is removed for brevity
-
-            string code = await this.AppUserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+            var code = await this.AppUserManager.GenerateEmailConfirmationTokenAsync(user.Id);
 
             var callbackUrl = new Uri(Url.Link("ConfirmEmailRoute", new { userId = user.Id, code = code }));
 
             await this.AppUserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
 
-            Uri locationHeader = new Uri(Url.Link("GetUserById", new { id = user.Id }));
+            var locationHeader = new Uri(Url.Link("GetUserById", new { id = user.Id }));
 
             return Created(locationHeader, TheModelFactory.Create(user));
         }
@@ -97,14 +93,7 @@ namespace AspNetIdentity.WebApi
 
             IdentityResult result = await this.AppUserManager.ConfirmEmailAsync(userId, code);
 
-            if (result.Succeeded)
-            {
-                return Ok();
-            }
-            else
-            {
-                return GetErrorResult(result);
-            }
+            return result.Succeeded ? Ok() : GetErrorResult(result);
         }
 
         [Route("ChangePassword")]
@@ -117,12 +106,7 @@ namespace AspNetIdentity.WebApi
 
             IdentityResult result = await this.AppUserManager.ChangePasswordAsync(User.Identity.GetUserId(), model.OldPassword, model.NewPassword);
 
-            if (!result.Succeeded)
-            {
-                return GetErrorResult(result);
-            }
-
-            return Ok();
+            return !result.Succeeded ? GetErrorResult(result) : Ok();
         }
 
         [Route("user/{id:guid}")]
@@ -133,21 +117,11 @@ namespace AspNetIdentity.WebApi
 
             var appUser = await this.AppUserManager.FindByIdAsync(id);
 
-            if (appUser != null)
-            {
-                IdentityResult result = await this.AppUserManager.DeleteAsync(appUser);
+            if (appUser == null) return NotFound();
 
-                if (!result.Succeeded)
-                {
-                    return GetErrorResult(result);
-                }
+            IdentityResult result = await this.AppUserManager.DeleteAsync(appUser);
 
-                return Ok();
-
-            }
-
-            return NotFound();
-
+            return !result.Succeeded ? GetErrorResult(result) : Ok();
         }
 
     }
